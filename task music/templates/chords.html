@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>심화 - 다양한 코드 알아보기</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        body { font-family: 'Arial', sans-serif; background-color: #f8f9fa; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; height: 100vh; }
+        .progress-container { width: 100%; background-color: #ddd; height: 10px; position: fixed; top: 0; left: 0; }
+        .progress-bar { height: 10px; background-color: #8e44ad; width: 0%; transition: width 0.4s ease; }
+        .content-box { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 800px; width: 90%; margin-top: 60px; text-align: left; min-height: 250px; }
+        .content-box h2 { color: #2c3e50; margin-top: 0; font-size: 2rem; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; }
+        .content-box p { font-size: 1.1rem; line-height: 1.6; color: #555; margin: 8px 0; }
+        .navigation { display: flex; justify-content: space-between; width: 90%; max-width: 800px; margin-top: 20px; }
+        .btn { padding: 15px 30px; font-size: 1.2rem; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-prev { background-color: #bdc3c7; color: white; }
+        .btn-next { background-color: #8e44ad; color: white; }
+        .action-btn { background-color: #e74c3c; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; font-size: 1.1rem; margin-top: 15px; display: inline-block; }
+        
+        .piano-container { margin-top: 15px; text-align: center; }
+        .piano { display: inline-block; position: relative; white-space: nowrap; user-select: none; }
+        .key { display: inline-block; border: 1px solid #000; border-radius: 0 0 5px 5px; position: relative; box-sizing: border-box; }
+        .key span { position: absolute; left: 0; width: 100%; text-align: center; font-size: 14px; font-weight: bold; pointer-events: none; }
+        .white-key { width: 40px; height: 160px; background-color: white; z-index: 1; vertical-align: top; }
+        .white-key span { bottom: 15px; color: #7f8c8d; }
+        .black-key { width: 25px; height: 100px; background-color: black; position: absolute; margin-left: -12.5px; z-index: 2; }
+        .key.active-blue { background-color: #8e44ad !important; box-shadow: 0 0 15px #8e44ad; }
+    </style>
+</head>
+<body>
+    <div class="progress-container"><div class="progress-bar" id="progress"></div></div>
+
+    <div class="content-box">
+        <h2 id="slide-title">제목</h2>
+        <div id="slide-content">내용</div>
+    </div>
+
+    <div class="piano-container"><div class="piano" id="piano"></div></div>
+
+    <div class="navigation">
+        <button class="btn btn-prev" id="btn-prev" onclick="prevSlide()">이전</button>
+        <button class="btn btn-next" id="btn-next" onclick="nextSlide()">시작하기 ▶</button>
+    </div>
+
+    <script>
+        const sampler = new Tone.Sampler({ urls: { "C4": "C4.mp3", "D#4": "Ds4.mp3", "F#4": "Fs4.mp3", "A4": "A4.mp3", "C5": "C5.mp3" }, release: 1, baseUrl: "https://tonejs.github.io/audio/salamander/" }).toDestination();
+        const pianoContainer = document.getElementById('piano');
+        const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        
+        function generatePiano() {
+            for (let octave = 4; octave <= 5; octave++) {
+                notes.forEach(note => {
+                    const isBlack = note.includes('#');
+                    const div = document.createElement('div');
+                    div.className = `key ${isBlack ? 'black-key' : 'white-key'}`;
+                    div.id = `key-${note + octave}`;
+                    pianoContainer.appendChild(div);
+                });
+            }
+            const divC6 = document.createElement('div');
+            divC6.className = 'key white-key';
+            divC6.id = 'key-C6';
+            pianoContainer.appendChild(divC6);
+        }
+        generatePiano();
+
+        const slides = [
+            {
+                title: "다양한 코드 알아보기 (심화)",
+                content: "<p>기초 튜토리얼에서 배운 3화음(도-미-솔)에 음을 더 추가하거나, 간격을 살짝 바꾸면 완전히 다른 분위기의 마법 같은 소리가 납니다.</p><br><p>지금부터 재즈나 현대 음악에서 쓰이는 <strong>세븐스, 디미니쉬, 서스, 어그먼티드</strong> 코드의 비밀을 파헤쳐 봅시다!</p>"
+            },
+            {
+                title: "1. 메이저 세븐 (Major 7th, Δ7)",
+                content: "<p>기본 3화음(도-미-솔) 위에 스케일의 7번째 음(시)을 얹으면 <strong>'메이저 세븐'</strong> 코드가 됩니다. 재즈에서는 <strong>CΔ7</strong>이라고 표기합니다.</p><br><p>도시에 밤비가 내리는 듯한 굉장히 세련되고 몽환적인 소리가 납니다. 들어볼까요?</p><br><button class='action-btn' onclick='fetchAndPlayChord(\"C\", \"maj7\")'>CΔ7 듣기 🎹</button>"
+            },
+            {
+                title: "2. 도미넌트 세븐 (Dominant 7th, 7)",
+                content: "<p>메이저 세븐에서 맨 위에 얹은 '시'를 반음 내린 '시♭'으로 바꾸면 <strong>'도미넌트 세븐(C7)'</strong> 코드가 됩니다.</p><br><p>음악에서 가장 <strong>긴장감</strong>이 강하며, 빨리 다음 코드로 넘어가서 안정을 찾고 싶어 하는 성질(해결성)을 가집니다. 블루스 음악의 핵심이기도 합니다.</p><br><button class='action-btn' onclick='fetchAndPlayChord(\"C\", \"dom7\")'>C7 듣기 🎹</button>"
+            },
+            {
+                title: "3. 디미니쉬 (Diminished, °)",
+                content: "<p>밝음과 어두움을 결정하는 '3음'과 '5음'을 모두 반음씩 깎아내린(Diminished) 코드입니다.</p><br><p>마치 영화에서 악당이 등장하거나 위험이 다가오는 듯한 아주 불안하고 기괴한 소리가 납니다. 재즈 표기법으로는 <strong>C°</strong> 로 표기합니다.</p><br><button class='action-btn' onclick='fetchAndPlayChord(\"C\", \"dim\")'>C° (디미니쉬) 듣기 🎹</button>"
+            },
+            {
+                title: "대칭의 마법: 디미니쉬 세븐 (°7)",
+                content: "<p>디미니쉬 코드에 음을 하나 더 쌓아 만든 <strong>디미니쉬 세븐(C°7)</strong> 코드는 음악 이론에서 가장 신기한 마법을 부립니다. 모든 음의 간격이 똑같이 3칸(단3도)으로 대칭을 이룹니다.</p><br><p>그래서 도, 미♭, 솔♭, 라를 누르면 그것은 C°7 이기도 하지만 동시에 <strong>Eb°7, Gb°7, A°7</strong> 과 구성음이 100% 똑같습니다! 파이썬이 이 동음이의어들을 어떻게 계산해 내는지 '자유 연주 모드'에서 꼭 실험해 보세요.</p><br><button class='action-btn' onclick='fetchAndPlayChord(\"C\", \"dim7\")'>C°7 (디미니쉬 7) 듣기 🎹</button>"
+            },
+            {
+                title: "4. 서스포 (Suspended 4th, sus4)",
+                content: "<p>코드의 성격을 결정하는 3음(미)을 빼버리고, 대신 4음(파)을 넣어 매달아 놓은(Suspended) 코드입니다.</p><br><p>밝은지도 어두운지도 알 수 없는 모호하고 신비로운 느낌을 주며, 곧바로 원래 3화음으로 돌아가고 싶어 하는 강한 이끌림이 있습니다.</p><br><button class='action-btn' onclick='fetchAndPlayChord(\"C\", \"sus4\")'>Csus4 듣기 🎹</button>"
+            },
+            {
+                title: "5. 어그먼티드 (Augmented, +)",
+                content: "<p>기본 3화음에서 5음(솔)을 반음 올려(솔#) 간격을 늘린(Augmented) 코드입니다. 재즈에서는 <strong>C+</strong> 로 표기합니다.</p><br><p>마치 우주 공간을 둥둥 떠다니는 듯한 신비롭고 몽환적인 소리가 나며, 다음 곡으로 넘어가기 전 분위기를 환기할 때 자주 쓰입니다.</p><br><button class='action-btn' onclick='fetchAndPlayChord(\"C\", \"aug\")'>C+ (어그먼티드) 듣기 🎹</button>"
+            },
+            {
+                title: "심화 과정 완료!",
+                content: "<p>수고하셨습니다! 이제 여러분은 악보에 적힌 복잡한 기호들(Δ, °, +, sus)의 정체와 그들이 만들어내는 마법 같은 느낌을 모두 알게 되었습니다.</p><br><p>홈 화면으로 돌아가 <strong>'자유 연주 모드'</strong>에서 오늘 배운 재즈 코드들을 직접 조합해 보고, 파이썬 엔진이 어떻게 다르게 해석해 내는지 마음껏 실험해 보세요!</p><br><br><a href='/' class='btn btn-prev' style='text-decoration:none; color:white; display:inline-block; margin-top:20px;'>홈으로 돌아가기</a>"
+            }
+        ];
+
+        let currentStep = 0;
+
+        function updateSlide() {
+            const slide = slides[currentStep];
+            document.getElementById('slide-title').innerHTML = slide.title;
+            document.getElementById('slide-content').innerHTML = slide.content;
+            document.getElementById('progress').style.width = `${(currentStep / (slides.length - 1)) * 100}%`;
+            document.getElementById('btn-prev').style.visibility = currentStep === 0 ? 'hidden' : 'visible';
+            const nextBtn = document.getElementById('btn-next');
+            nextBtn.style.display = 'inline-block'; 
+            if (currentStep === 0) nextBtn.innerText = "시작하기 ▶";
+            else if (currentStep === slides.length - 1) nextBtn.style.display = 'none'; 
+            else nextBtn.innerText = "다음 ▶";
+        }
+
+        function nextSlide() { Tone.start(); if (currentStep < slides.length - 1) { currentStep++; updateSlide(); } }
+        function prevSlide() { if (currentStep > 0) { currentStep--; updateSlide(); } }
+
+        async function fetchAndPlayChord(root, type) {
+            try {
+                const response = await fetch(`/get_chord_notes?root=${root}&type=${type}`);
+                const data = await response.json();
+                if(data.notes) {
+                    sampler.triggerAttackRelease(data.notes, "2n");
+                    data.notes.forEach(note => {
+                        const keyEl = document.getElementById(`key-${note}`);
+                        if(keyEl) {
+                            keyEl.classList.add('active-blue');
+                            setTimeout(() => keyEl.classList.remove('active-blue'), 1500);
+                        }
+                    });
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        updateSlide();
+    </script>
+</body>
+</html>
