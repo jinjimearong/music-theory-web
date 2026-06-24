@@ -4,64 +4,21 @@
     <meta charset="UTF-8">
     <title>화성학 연습 사이트</title>
     <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            background-color: #f8f9fa;
-            color: #343a40;
-            text-align: center;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            height: 100vh;
-        }
+        body { font-family: 'Arial', sans-serif; background-color: #f8f9fa; color: #343a40; text-align: center; margin: 0; padding: 0; display: flex; flex-direction: column; justify-content: center; height: 100vh; }
         h1 { font-size: 3rem; margin-bottom: 10px; color: #2c3e50; }
         p.subtitle { font-size: 1.2rem; color: #6c757d; margin-bottom: 50px; }
-        
-        .menu-container {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-        }
-        .menu-btn {
-            background-color: #ffffff;
-            border: 2px solid #007bff;
-            color: #007bff;
-            padding: 20px 40px;
-            font-size: 1.5rem;
-            font-weight: bold;
-            border-radius: 10px;
-            cursor: pointer;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .menu-btn:hover {
-            background-color: #007bff;
-            color: #ffffff;
-            transform: translateY(-3px);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-        }
-        .menu-btn.disabled {
-            border-color: #ced4da;
-            color: #ced4da;
-            cursor: not-allowed;
-        }
-        .menu-btn.disabled:hover { background-color: #ffffff; transform: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .menu-container { display: flex; justify-content: center; gap: 20px; }
+        .menu-btn { background-color: #ffffff; border: 2px solid #007bff; color: #007bff; padding: 20px 40px; font-size: 1.4rem; font-weight: bold; border-radius: 10px; cursor: pointer; text-decoration: none; transition: all 0.3s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .menu-btn:hover { background-color: #007bff; color: #ffffff; transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
     </style>
 </head>
 <body>
-
     <h1>화성학 연습 사이트</h1>
-    <p class="subtitle">음악 이론을 전혀 몰라도 괜찮습니다. 지금 바로 시작해 보세요.</p>
-
+    <p class="subtitle">음악 이론을 전혀 몰라도 괜찮습니다. 파이썬 인공지능과 함께 시작해 보세요.</p>
     <div class="menu-container">
-        <!-- 각 버튼을 누르면 app.py에 정의된 라우팅 경로로 이동합니다 -->
-        <a href="/tutorial" class="menu-btn">📖 튜토리얼 (강의)</a>
-        <a href="/play" class="menu-btn">🎹 직접 해보기</a>
-        <a href="/quiz" class="menu-btn disabled" onclick="return false;">📝 퀴즈 (구상 중)</a>
+        <a href="/tutorial" class="menu-btn">📖 1. 기초 튜토리얼</a>
+        <a href="/chords" class="menu-btn" style="border-color: #8e44ad; color: #8e44ad;">🧠 2. 다양한 코드 (심화)</a>
+        <a href="/play" class="menu-btn" style="border-color: #27ae60; color: #27ae60;">🎹 3. 자유 연주 모드</a>
     </div>
-
 </body>
 </html>
