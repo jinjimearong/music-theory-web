@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>튜토리얼 - 화성학의 세계</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        body { font-family: 'Arial', sans-serif; background-color: #f8f9fa; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; height: 100vh; }
+        
+        .progress-container { width: 100%; background-color: #ddd; height: 10px; position: fixed; top: 0; left: 0; }
+        .progress-bar { height: 10px; background-color: #3498db; width: 0%; transition: width 0.4s ease; }
+        
+        .content-box { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 800px; width: 90%; margin-top: 60px; text-align: left; min-height: 250px; }
+        .content-box h2 { color: #2c3e50; margin-top: 0; font-size: 2rem; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; }
+        .content-box p { font-size: 1.1rem; line-height: 1.6; color: #555; margin: 8px 0; }
+        
+        .navigation { display: flex; justify-content: space-between; width: 90%; max-width: 800px; margin-top: 20px; }
+        .btn { padding: 15px 30px; font-size: 1.2rem; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-prev { background-color: #bdc3c7; color: white; }
+        .btn-prev:hover { background-color: #95a5a6; }
+        .btn-next { background-color: #3498db; color: white; }
+        .btn-next:hover { background-color: #2980b9; }
+
+        .controls { margin-top: 20px; text-align: center; }
+        .controls button { font-size: 1rem; padding: 5px 15px; margin: 0 10px; cursor: pointer; border-radius: 5px; border: 1px solid #ccc; }
+        .controls span { font-size: 1rem; font-weight: bold; color: #333; }
+
+        .piano-container { margin-top: 15px; text-align: center; }
+        .piano { display: inline-block; position: relative; white-space: nowrap; user-select: none; }
+        .key { display: inline-block; border: 1px solid #000; border-radius: 0 0 5px 5px; position: relative; box-sizing: border-box; transition: background-color 0.1s; cursor: pointer; }
+        .key span { position: absolute; left: 0; width: 100%; text-align: center; font-size: 14px; font-weight: bold; pointer-events: none; }
+        
+        .white-key { width: 40px; height: 160px; background-color: white; z-index: 1; vertical-align: top; }
+        .white-key span { bottom: 15px; color: #7f8c8d; }
+        .black-key { width: 25px; height: 100px; background-color: black; position: absolute; margin-left: -12.5px; z-index: 2; }
+        .black-key span { bottom: 15px; color: #bdc3c7; }
+        
+        .key.active-blue { background-color: #3498db !important; box-shadow: 0 0 15px #3498db; }
+        
+        .action-btn { background-color: #e74c3c; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; font-size: 1.1rem; margin-top: 15px; display: inline-block; }
+        .action-btn:hover { opacity: 0.9; }
+
+        /* [추가됨] 피드백 토스트 팝업 UI */
+        #feedback-toast {
+            position: fixed; top: 30px; left: 50%; transform: translateX(-50%);
+            padding: 15px 30px; border-radius: 30px; color: white; font-weight: bold; font-size: 1.2rem;
+            opacity: 0; transition: opacity 0.3s ease; pointer-events: none; z-index: 1000;
+        }
+        .toast-success { background-color: #2ecc71; box-shadow: 0 5px 15px rgba(46,204,113,0.4); }
+        .toast-error { background-color: #e74c3c; box-shadow: 0 5px 15px rgba(231,76,60,0.4); }
+    </style>
+</head>
+<body>
+
+    <!-- 피드백 메시지가 뜨는 공간 -->
+    <div id="feedback-toast">잘했어요!</div>
+
+    <div class="progress-container"><div class="progress-bar" id="progress"></div></div>
+
+    <div class="content-box">
+        <h2 id="slide-title">제목</h2>
+        <div id="slide-content">내용</div>
+    </div>
+
+    <div class="controls">
+        <button id="octave-down">◀ 옥타브 내림</button>
+        <span id="current-octave-display">키보드 매핑 옥타브: 4</span>
+        <button id="octave-up">옥타브 올림 ▶</button>
+    </div>
+
+    <div class="piano-container">
+        <div class="piano" id="piano"></div>
+    </div>
+
+    <div class="navigation">
+        <button class="btn btn-prev" id="btn-prev" onclick="prevSlide()">이전</button>
+        <button class="btn btn-next" id="btn-next" onclick="nextSlide()">시작하기 ▶</button>
+    </div>
+
+    <script>
+        const sampler = new Tone.Sampler({
+            urls: { "C4": "C4.mp3", "D#4": "Ds4.mp3", "F#4": "Fs4.mp3", "A4": "A4.mp3", "C5": "C5.mp3" },
+            release: 1,
+            baseUrl: "https://tonejs.github.io/audio/salamander/"
+        }).toDestination();
+
+        const pianoContainer = document.getElementById('piano');
+        const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        
+        const keyCharsEn = ['a', 'w', 's', 'e', 'd', 'f', 't', 'g', 'y', 'h', 'u', 'j', 'k'];
+        const keyCharsKo = ['ㅁ', 'ㅈ', 'ㄴ', 'ㄷ', 'ㅇ', 'ㄹ', 'ㅅ', 'ㅎ', 'ㅛ', 'ㅗ', 'ㅕ', 'ㅓ', 'ㅏ'];
+        const keyCodes   = ['KeyA', 'KeyW', 'KeyS', 'KeyE', 'KeyD', 'KeyF', 'KeyT', 'KeyG', 'KeyY', 'KeyH', 'KeyU', 'KeyJ', 'KeyK'];
+
+        let baseOctave = 4;
+        let currentLang = 'en'; 
+
+        // [추가됨] 퀴즈 채점용 변수들
+        let isQuizMode = false;
+        let expectedNotes = [];     // 백엔드에서 받아온 정답 배열
+        let currentQuizIndex = 0;   // 사용자가 현재 맞춰야 할 음의 순서
+
+        // 피드백 메시지 띄우기 함수
+        function showFeedback(msg, isSuccess) {
+            const toast = document.getElementById('feedback-toast');
+            toast.innerText = msg;
+            toast.className = isSuccess ? 'toast-success' : 'toast-error';
+            toast.style.opacity = '1';
+            
+            // 1.5초 뒤에 사라짐
+            setTimeout(() => { toast.style.opacity = '0'; }, 1500);
+        }
+
+        function generatePiano() {
+            pianoContainer.innerHTML = '';
+            for (let octave = 4; octave <= 5; octave++) {
+                notes.forEach((note) => {
+                    const noteName = note + octave;
+                    const isBlack = note.includes('#');
+                    const div = document.createElement('div');
+                    div.className = `key ${isBlack ? 'black-key' : 'white-key'}`;
+                    div.id = `key-${noteName}`;
+                    div.setAttribute('data-note', noteName);
+                    
+                    const span = document.createElement('span');
+                    div.appendChild(span);
+                    
+                    div.addEventListener('mousedown', () => playManual(noteName));
+                    div.addEventListener('mouseup', () => releaseManual(noteName));
+                    div.addEventListener('mouseleave', () => releaseManual(noteName));
+                    
+                    pianoContainer.appendChild(div);
+                });
+            }
+            const divC6 = document.createElement('div');
+            divC6.className = 'key white-key';
+            divC6.id = 'key-C6';
+            const spanC6 = document.createElement('span');
+            divC6.appendChild(spanC6);
+            pianoContainer.appendChild(divC6);
+            
+            updateKeyboardMapping();
+        }
+
+        function updateKeyboardMapping() {
+            document.querySelectorAll('.key span').forEach(span => span.innerText = '');
+            const chars = currentLang === 'en' ? keyCharsEn : keyCharsKo;
+            
+            notes.forEach((note, index) => {
+                const targetKey = document.getElementById(`key-${note}${baseOctave}`);
+                if (targetKey) targetKey.querySelector('span').innerText = currentLang === 'en' ? chars[index].toUpperCase() : chars[index];
+            });
+            const topC = document.getElementById(`key-C${baseOctave + 1}`);
+            if (topC) topC.querySelector('span').innerText = currentLang === 'en' ? 'K' : 'ㅏ';
+            
+            document.getElementById('current-octave-display').innerText = `키보드 매핑 옥타브: ${baseOctave}`;
+        }
+
+        generatePiano();
+
+        document.getElementById('octave-up').addEventListener('click', () => { if (baseOctave < 5) { baseOctave++; updateKeyboardMapping(); } });
+        document.getElementById('octave-down').addEventListener('click', () => { if (baseOctave > 4) { baseOctave--; updateKeyboardMapping(); } });
+
+        // [수정됨] 수동 연주 시 퀴즈 정답 여부 체크 로직 추가
+        function playManual(note) { 
+            Tone.start(); 
+            sampler.triggerAttack(note); 
+            const key = document.getElementById(`key-${note}`); 
+            if(key) key.classList.add('active-blue'); 
+
+            // 퀴즈 모드일 경우 채점 진행
+            if (isQuizMode && expectedNotes.length > 0) {
+                // 사용자의 입력음과 정답음에서 숫자(옥타브)를 제거하여 순수 음정만 비교
+                // (예: F4든 F5든 파(F)를 누르면 정답 처리)
+                const playedNoteBase = note.replace(/[0-9]/g, '');
+                const expectedNoteBase = expectedNotes[currentQuizIndex].replace(/[0-9]/g, '');
+
+                if (playedNoteBase === expectedNoteBase) {
+                    currentQuizIndex++;
+                    if (currentQuizIndex >= expectedNotes.length) {
+                        showFeedback("🎉 완벽합니다! 퀴즈를 모두 맞추셨어요!", true);
+                        isQuizMode = false; // 퀴즈 종료
+                    } else {
+                        showFeedback(`잘했어요! 다음음을 찾아보세요. (${currentQuizIndex}/${expectedNotes.length})`, true);
+                    }
+                } else {
+                    showFeedback("🤔 앗! 다시 한번 도전해보세요!", false);
+                    // 틀렸을 경우 처음부터 다시 치게 하려면 아래 주석을 풉니다.
+                    // currentQuizIndex = 0; 
+                }
+            }
+        }
+
+        function releaseManual(note) { sampler.triggerRelease(note); const key = document.getElementById(`key-${note}`); if (key) key.classList.remove('active-blue'); }
+
+        window.addEventListener('keydown', (e) => {
+            if(e.repeat) return;
+            if (keyCharsKo.includes(e.key)) { if (currentLang !== 'ko') { currentLang = 'ko'; updateKeyboardMapping(); } } 
+            else if (keyCharsEn.includes(e.key.toLowerCase())) { if (currentLang !== 'en') { currentLang = 'en'; updateKeyboardMapping(); } }
+
+            const idx = keyCodes.indexOf(e.code);
+            if (idx !== -1) {
+                let noteName = (idx === 12) ? `C${baseOctave + 1}` : `${notes[idx]}${baseOctave}`;
+                playManual(noteName);
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const idx = keyCodes.indexOf(e.code);
+            if (idx !== -1) {
+                let noteName = (idx === 12) ? `C${baseOctave + 1}` : `${notes[idx]}${baseOctave}`;
+                releaseManual(noteName);
+            }
+        });
+
+        const slides = [
+            {
+                title: "화성학의 세계에 오신 것을 환영합니다",
+                content: "<p>이곳에서는 음악 이론을 몰라도 파이썬 인공지능 엔진의 도움을 받아 아주 쉽고 직관적으로 화성학을 이해할 수 있습니다.</p><br><p><strong>[입력 방법 안내]</strong></p><ul><li><strong>마우스 클릭:</strong> 화면의 건반을 직접 클릭합니다.</li><li><strong>외부 미디(MIDI):</strong> 연결된 미디 키보드를 연주합니다. (자동 연동)</li><li><strong>컴퓨터 키보드:</strong> 컴퓨터 자판을 피아노처럼 사용합니다. 직관적인 A~K 배열을 사용하며, <strong>한/영 키 상태에 상관없이 완벽하게 작동합니다!</strong></li></ul><p>하단의 <strong>'시작하기'</strong> 버튼을 눌러 피아노 소리를 켜고 첫 수업을 시작해 보세요.</p>"
+            },
+            {
+                title: "1장. 도레미파솔라시도의 비밀",
+                content: "<p>도레미파솔라시도는 왜 이 순서대로일까요? 서양 음악에는 두 가지 대표적인 음계(Scale, 스케일)가 있습니다.</p><br><br><p>첫 번째는 <strong>메이저(Major) 스케일</strong>입니다. 아래 버튼을 눌러 파이썬이 계산한 C 메이저 스케일을 들어보세요.</p><br><button class='action-btn' onclick='fetchAndPlayScale(\"C\", \"major\")'>메이저 스케일 듣기 🎵</button>"
+            },
+            {
+                title: "밝음과 어두움",
+                content: "<p>이번에는 <strong>마이너(Minor) 스케일</strong>을 들어보겠습니다.</p><br><button class='action-btn' style='background-color: #8e44ad;' onclick='fetchAndPlayScale(\"C\", \"minor\")'>마이너 스케일 듣기 🎵</button><br><br><br><p>방금 들은 메이저 스케일은 밝고 활기찬 느낌, 마이너 스케일은 어둡고 슬픈 느낌이 들지 않나요? 똑같은 '도'에서 시작했는데 왜 느낌이 다를까요?</p>"
+            },
+            {
+                title: "비밀은 '음 간격'에 있습니다",
+                content: "<p>똑똑한 옛날 음악가들은 음과 음 사이의 간격에 규칙을 만들었습니다.</p><br><p>피아노 건반에서 바로 옆 건반(검은건반 포함)으로 이동하면 <strong>'반음'</strong>, 두 칸을 이동하면 <strong>'온음'</strong>이라고 합니다.</p><br><br><p>밝은 메이저 스케일의 공식은 <strong>[온-온-반-온-온-온-반]</strong> 입니다. (미-파, 시-도는 반음 간격이죠!)<br>반면 어두운 마이너 스케일은 <strong>[온-반-온-온-반-온-온]</strong>의 간격을 가집니다.</p>"
+            },
+            {
+                title: "직접 해보기 (스케일 연주)",
+                content: "<p>이제 여러분 차례입니다! 컴퓨터 키보드의 <code>A</code>부터 <code>K</code>까지 순서대로 눌러서 방금 배운 메이저 스케일(도레미파솔라시도)을 직접 연주해 보세요.</p><br><br><p>소리를 들으며 흰 건반 사이에 있는 검은 건반(온음/반음)의 위치를 눈으로 확인해 보세요.</p>"
+            },
+            {
+                title: "2장. 화음 (Chord)",
+                content: "<p>스케일을 구성하는 음 중에서 1번째, 3번째, 5번째 음을 뼈대로 모아 동시에 치면 강력한 성격을 띠는 <strong>화음(Chord)</strong>이 됩니다.</p><br><br><p>아래 버튼을 눌러 파이썬이 조합해 준 <strong>'C 메이저 화음(도-미-솔)'</strong>을 눈과 귀로 확인해 보세요.</p><br><button class='action-btn' onclick='fetchAndPlayChord(\"C\", \"major\")'>C 메이저 화음 연주 🎹</button>"
+            },
+            {
+                title: "어두운 화음 (마이너 코드)",
+                content: "<p>밝은 화음이 있다면, 당연히 어두운 화음도 있겠죠?</p><br><br><p>마이너 스케일의 1, 3, 5번째 음을 가져오면 슬픈 느낌을 주는 <strong>'C 마이너 화음(도-미♭-솔)'</strong>이 완성됩니다. 파이썬이 어떻게 간격을 계산했는지 직접 들어보세요.</p><br><button class='action-btn' style='background-color: #8e44ad;' onclick='fetchAndPlayChord(\"C\", \"minor\")'>C 마이너 화음 연주 🎹</button>"
+            },
+            {
+                title: "직접 해보기 (화음 연주)",
+                content: "<p>키보드 자판 <code>A(도)</code>, <code>D(미)</code>, <code>G(솔)</code> 세 개를 <strong>동시에</strong> 눌러보세요.</p><br><br><p>화음은 이렇게 여러 음이 쌓여 만들어지며, 이 화음들이 연결되면서 우리가 아는 노래가 탄생합니다.</p>"
+            },
+            {
+                title: "3장. 다른 기준음에서의 스케일",
+                content: "<p>지금까지는 '도(C)'를 기준으로 했습니다. 배운 지식을 바탕으로 다른 음높이에서 시작해 볼까요?</p><br><br><p>'솔(G)'부터 시작해서 [온-온-반-온-온-온-반] 공식을 적용하면 파이썬은 중간에 '파#'을 하나 넣어야 한다고 계산합니다. 들어볼까요?</p><br><button class='action-btn' onclick='fetchAndPlayScale(\"G\", \"major\")'>G 메이저 스케일 듣기 🎵</button>"
+            },
+            {
+                title: "마무리 퀴즈",
+                content: "<p>마지막 퀴즈입니다. <strong>'파(F)'</strong>를 기준으로 밝은 메이저 스케일을 만들려면 어느 건반을 순서대로 눌러야 할까요?</p><br><p>아래 <strong>'옥타브 올림'</strong> 버튼을 눌러 매핑을 5옥타브로 올린 뒤, 키보드나 마우스로 F부터 하나씩 건반을 찾아 연주해 보세요! (파란색 버튼으로 정답을 확인할 수도 있습니다)</p><br><button class='action-btn' onclick='fetchAndPlayScale(\"F\", \"major\")'>정답 자동 연주 확인 (F 메이저) 🎵</button>"
+            },
+            {
+                title: "튜토리얼 완료!",
+                content: "<p>축하합니다! 기초 화성학의 원리를 완벽히 이해하셨습니다.</p><br><p>메이저/마이너 스케일의 차이, 온음과 반음의 개념, 그리고 파이썬이 이를 수학적으로 어떻게 처리하여 소리로 내보내는지 체험해 보았습니다.</p><br><br><a href='/' class='btn btn-prev' style='text-decoration:none; color:white; display:inline-block; margin-top:20px;'>홈으로 돌아가기</a>"
+            }
+        ];
+
+        let currentStep = 0;
+
+        // [추가됨] 퀴즈용 정답 데이터 받아오기
+        async function loadQuizData(root, type) {
+            try {
+                const response = await fetch(`/get_scale?root=${root}&type=${type}`);
+                const data = await response.json();
+                if(data.notes) {
+                    expectedNotes = data.notes;
+                    currentQuizIndex = 0;
+                    isQuizMode = true;
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function updateSlide() {
+            const slide = slides[currentStep];
+            document.getElementById('slide-title').innerHTML = slide.title;
+            document.getElementById('slide-content').innerHTML = slide.content;
+            
+            const progress = (currentStep / (slides.length - 1)) * 100;
+            document.getElementById('progress').style.width = `${progress}%`;
+
+            document.getElementById('btn-prev').style.visibility = currentStep === 0 ? 'hidden' : 'visible';
+            
+            const nextBtn = document.getElementById('btn-next');
+            nextBtn.style.display = 'inline-block'; 
+            if (currentStep === 0) nextBtn.innerText = "시작하기 ▶";
+            else if (currentStep === slides.length - 1) nextBtn.style.display = 'none'; 
+            else nextBtn.innerText = "다음 ▶";
+
+            // [추가됨] 9번째 슬라이드(마무리 퀴즈)에 도달하면 백엔드에서 정답 데이터를 로드하여 퀴즈 모드 활성화
+            if (currentStep === 9) {
+                loadQuizData('F', 'major');
+            } else {
+                isQuizMode = false;
+            }
+        }
+
+        function nextSlide() { Tone.start(); if (currentStep < slides.length - 1) { currentStep++; updateSlide(); } }
+        function prevSlide() { if (currentStep > 0) { currentStep--; updateSlide(); } }
+
+        async function fetchAndPlayScale(root, type) {
+            try {
+                const response = await fetch(`/get_scale?root=${root}&type=${type}`);
+                const data = await response.json();
+                if(data.notes) {
+                    data.notes.forEach((note, index) => {
+                        setTimeout(() => {
+                            sampler.triggerAttackRelease(note, "8n");
+                            const keyEl = document.getElementById(`key-${note}`);
+                            if(keyEl) {
+                                keyEl.classList.add('active-blue');
+                                setTimeout(() => keyEl.classList.remove('active-blue'), 400);
+                            }
+                        }, index * 500); 
+                    });
+                }
+            } catch (e) { console.error("백엔드 통신 오류", e); }
+        }
+
+        async function fetchAndPlayChord(root, type) {
+            try {
+                const response = await fetch(`/get_chord_notes?root=${root}&type=${type}`);
+                const data = await response.json();
+                if(data.notes) {
+                    sampler.triggerAttackRelease(data.notes, "2n");
+                    data.notes.forEach(note => {
+                        const keyEl = document.getElementById(`key-${note}`);
+                        if(keyEl) {
+                            keyEl.classList.add('active-blue');
+                            setTimeout(() => keyEl.classList.remove('active-blue'), 1000);
+                        }
+                    });
+                }
+            } catch (e) { console.error("백엔드 통신 오류", e); }
+        }
+
+        updateSlide();
+    </script>
+</body>
+</html>
