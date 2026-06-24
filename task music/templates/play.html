@@ -2,100 +2,90 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>직접 해보기 - 화음 분석기</title>
-    <!-- 리얼 피아노 소리를 위한 Tone.js 라이브러리 로드 -->
+    <title>자유 연주 모드</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         body { text-align: center; font-family: 'Arial', sans-serif; background-color: #f4f4f4; user-select: none; margin: 0; padding: 20px; }
-        
         .header-container { display: flex; justify-content: space-between; align-items: center; max-width: 900px; margin: 0 auto; }
         .home-btn { padding: 10px 20px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; }
         
-        #chord-display { font-size: 4em; margin: 20px; height: 80px; font-weight: bold; color: #2c3e50; }
+        /* 다중 코드 해석을 보여주는 UI 컨테이너 */
+        #chord-display-container { height: 140px; display: flex; flex-direction: column; justify-content: center; margin: 10px 0; }
+        #primary-chord { font-size: 5em; font-weight: bold; color: #2c3e50; margin: 0; line-height: 1; }
+        #alternative-chords { font-size: 1.5em; color: #7f8c8d; margin-top: 10px; min-height: 30px; font-weight: bold; }
         
-        /* 옥타브 조절기 디자인 */
         .controls { margin-bottom: 20px; }
-        .controls button { font-size: 1.2rem; padding: 5px 15px; margin: 0 10px; cursor: pointer; }
+        .controls button { font-size: 1.2rem; padding: 5px 15px; margin: 0 10px; cursor: pointer; border-radius: 5px; border: 1px solid #ccc; }
         .controls span { font-size: 1.2rem; font-weight: bold; }
 
-        /* 49건반이 가로로 스크롤되거나 꽉 차게 들어가는 컨테이너 */
         .piano-wrapper { overflow-x: auto; padding-bottom: 20px; }
         .piano { display: inline-block; position: relative; white-space: nowrap; }
-        
         .key { display: inline-block; border: 1px solid #000; border-radius: 0 0 5px 5px; cursor: pointer; position: relative; box-sizing: border-box; }
-        .key span { position: absolute; width: 100%; text-align: center; font-size: 12px; font-weight: bold; pointer-events: none; }
         
-        /* 건반 폭을 49개에 맞춰 살짝 줄였습니다. */
+        /* 텍스트 짤림 방지 완벽 해결 CSS */
+        .key span { position: absolute; left: 0; width: 100%; text-align: center; font-size: 12px; font-weight: bold; pointer-events: none; }
+        
         .white-key { width: 35px; height: 160px; background-color: white; z-index: 1; vertical-align: top; }
         .white-key span { bottom: 10px; color: #e74c3c; } 
-        .white-key:active, .white-key.active { background-color: #ddd; }
-        
         .black-key { width: 22px; height: 100px; background-color: black; position: absolute; margin-left: -11px; z-index: 2; }
         .black-key span { bottom: 10px; color: #e74c3c; }
-        .black-key:active, .black-key.active { background-color: #444; }
-
-        /* 로딩 화면 */
+        
+        .key.active, .white-key:active, .black-key:active { background-color: #27ae60 !important; box-shadow: inset 0 0 10px #1e8449; }
         #loading { color: #e74c3c; font-weight: bold; margin-bottom: 10px; }
     </style>
 </head>
 <body>
-
     <div class="header-container">
         <a href="/" class="home-btn">← 홈으로</a>
-        <h1>직접 해보기 (49건반)</h1>
-        <div style="width: 80px;"></div> <!-- 중앙 정렬을 위한 여백 -->
+        <h1>자유 연주 모드 (49건반)</h1>
+        <div style="width: 80px;"></div>
     </div>
 
-    <div id="loading">피아노 소리를 불러오는 중입니다... (잠시만 기다려주세요)</div>
+    <div id="loading">피아노 소리를 불러오는 중입니다...</div>
     
-    <div id="chord-display">-</div>
+    <div id="chord-display-container">
+        <div id="primary-chord">-</div>
+        <div id="alternative-chords"></div>
+    </div>
 
     <div class="controls">
         <button id="octave-down">◀ 옥타브 내림</button>
-        <span id="current-octave-display">기준 옥타브: 4</span>
+        <span id="current-octave-display">키보드 매핑 옥타브: 4</span>
         <button id="octave-up">옥타브 올림 ▶</button>
     </div>
 
     <div class="piano-wrapper">
-        <div class="piano" id="piano">
-            <!-- 자바스크립트가 여기에 49개의 건반을 자동으로 생성합니다. -->
-        </div>
+        <div class="piano" id="piano"></div>
     </div>
 
     <script>
-        // 1. 실제 그랜드 피아노 샘플 불러오기 (Tone.js)
         const sampler = new Tone.Sampler({
-            urls: {
-                "C4": "C4.mp3", "D#4": "Ds4.mp3", "F#4": "Fs4.mp3", "A4": "A4.mp3",
-                "C5": "C5.mp3", "D#5": "Ds5.mp3", "F#5": "Fs5.mp3", "A5": "A5.mp3",
-            },
-            release: 1,
-            baseUrl: "https://tonejs.github.io/audio/salamander/",
+            urls: { "C4": "C4.mp3", "D#4": "Ds4.mp3", "F#4": "Fs4.mp3", "A4": "A4.mp3", "C5": "C5.mp3" },
+            release: 1, baseUrl: "https://tonejs.github.io/audio/salamander/",
             onload: () => {
-                document.getElementById('loading').innerText = "피아노 로딩 완료! 건반을 눌러보세요.";
+                document.getElementById('loading').innerText = "피아노 로딩 완료! 여러 건반을 눌러 코드를 분석해 보세요.";
                 document.getElementById('loading').style.color = "#27ae60";
             }
         }).toDestination();
 
         let activeNotes = new Set();
-        let baseOctave = 4; // 컴퓨터 자판이 매핑될 기본 옥타브
+        let baseOctave = 4; 
+        let currentLang = 'en';
 
-        // 자판 배열 (A~K)
-        const keyChars = ['a', 'w', 's', 'e', 'd', 'f', 't', 'g', 'y', 'h', 'u', 'j', 'k'];
-        
-        // 2. 49건반 (C2 ~ C6) 자동 생성 로직
-        const pianoContainer = document.getElementById('piano');
         const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        const keyCharsEn = ['a', 'w', 's', 'e', 'd', 'f', 't', 'g', 'y', 'h', 'u', 'j', 'k'];
+        const keyCharsKo = ['ㅁ', 'ㅈ', 'ㄴ', 'ㄷ', 'ㅇ', 'ㄹ', 'ㅅ', 'ㅎ', 'ㅛ', 'ㅗ', 'ㅕ', 'ㅓ', 'ㅏ'];
+        const keyCodes   = ['KeyA', 'KeyW', 'KeyS', 'KeyE', 'KeyD', 'KeyF', 'KeyT', 'KeyG', 'KeyY', 'KeyH', 'KeyU', 'KeyJ', 'KeyK'];
+        
+        const pianoContainer = document.getElementById('piano');
         
         function generatePiano() {
-            pianoContainer.innerHTML = ''; // 초기화
+            pianoContainer.innerHTML = '';
             for (let octave = 2; octave <= 5; octave++) {
-                notes.forEach(note => {
-                    createKeyElement(note, octave);
-                });
+                notes.forEach(note => { createKeyElement(note, octave); });
             }
-            createKeyElement('C', 6); // 마지막 49번째 건반
-            updateKeyboardMapping(); // 화면에 알파벳 글씨 칠하기
+            createKeyElement('C', 6);
+            updateKeyboardMapping(); 
         }
 
         function createKeyElement(note, octave) {
@@ -110,7 +100,6 @@
             div.appendChild(span);
             pianoContainer.appendChild(div);
 
-            // 마우스 이벤트 연결
             div.addEventListener('mousedown', () => pressKey(noteName));
             div.addEventListener('mouseup', () => releaseKey(noteName));
             div.addEventListener('mouseleave', () => releaseKey(noteName));
@@ -118,34 +107,26 @@
 
         generatePiano();
 
-        // 3. 자판 매핑 업데이트 및 화면 표시
         function updateKeyboardMapping() {
-            // 모든 건반의 글씨 지우기
             document.querySelectorAll('.key span').forEach(span => span.innerText = '');
+            const chars = currentLang === 'en' ? keyCharsEn : keyCharsKo;
             
-            // 현재 baseOctave에 맞춰 글씨 새기기 (C ~ 다음 C까지 13개 건반)
             notes.forEach((note, index) => {
                 const targetKey = document.getElementById(`key-${note}${baseOctave}`);
-                if (targetKey) targetKey.querySelector('span').innerText = keyChars[index].toUpperCase();
+                if (targetKey) targetKey.querySelector('span').innerText = currentLang === 'en' ? chars[index].toUpperCase() : chars[index];
             });
             const topC = document.getElementById(`key-C${baseOctave + 1}`);
-            if (topC) topC.querySelector('span').innerText = 'K';
+            if (topC) topC.querySelector('span').innerText = currentLang === 'en' ? 'K' : 'ㅏ';
             
-            document.getElementById('current-octave-display').innerText = `기준 옥타브: ${baseOctave}`;
+            document.getElementById('current-octave-display').innerText = `키보드 매핑 옥타브: ${baseOctave}`;
         }
 
-        // 4. 옥타브 스위처 버튼 이벤트
-        document.getElementById('octave-up').addEventListener('click', () => {
-            if (baseOctave < 5) { baseOctave++; updateKeyboardMapping(); }
-        });
-        document.getElementById('octave-down').addEventListener('click', () => {
-            if (baseOctave > 2) { baseOctave--; updateKeyboardMapping(); }
-        });
+        document.getElementById('octave-up').addEventListener('click', () => { if (baseOctave < 5) { baseOctave++; updateKeyboardMapping(); } });
+        document.getElementById('octave-down').addEventListener('click', () => { if (baseOctave > 2) { baseOctave--; updateKeyboardMapping(); } });
 
-        // 5. 소리 재생 및 파이썬 서버 통신 로직
         function pressKey(noteName) {
             if (activeNotes.has(noteName)) return;
-            Tone.start(); // 브라우저 오디오 정책 우회
+            Tone.start(); 
             sampler.triggerAttack(noteName);
             activeNotes.add(noteName);
             const el = document.getElementById(`key-${noteName}`);
@@ -165,7 +146,8 @@
         async function analyzeChord() {
             const notesArray = Array.from(activeNotes);
             if (notesArray.length === 0) {
-                document.getElementById('chord-display').innerText = '-';
+                document.getElementById('primary-chord').innerText = '-';
+                document.getElementById('alternative-chords').innerText = '';
                 return;
             }
             const response = await fetch('/analyze_chord', {
@@ -174,27 +156,33 @@
                 body: JSON.stringify({ notes: notesArray })
             });
             const result = await response.json();
-            document.getElementById('chord-display').innerText = result.chord || 'Unknown';
+            
+            document.getElementById('primary-chord').innerText = result.primary || 'Unknown';
+            
+            // 다른 해석(동음이의어 코드 등)이 존재하면 하단에 회색 글씨로 표시
+            if (result.alternatives && result.alternatives.length > 0) {
+                document.getElementById('alternative-chords').innerText = "또는: " + result.alternatives.join(', ');
+            } else {
+                document.getElementById('alternative-chords').innerText = '';
+            }
         }
 
-        // 6. 컴퓨터 키보드 입력 이벤트
         window.addEventListener('keydown', (e) => {
             if(e.repeat) return;
-            const index = keyChars.indexOf(e.key.toLowerCase());
-            if (index !== -1) {
-                let noteName;
-                if (index === 12) noteName = `C${baseOctave + 1}`; // K 키는 다음 옥타브 도
-                else noteName = `${notes[index]}${baseOctave}`;
+            if (keyCharsKo.includes(e.key)) { if (currentLang !== 'ko') { currentLang = 'ko'; updateKeyboardMapping(); } } 
+            else if (keyCharsEn.includes(e.key.toLowerCase())) { if (currentLang !== 'en') { currentLang = 'en'; updateKeyboardMapping(); } }
+
+            const idx = keyCodes.indexOf(e.code);
+            if (idx !== -1) {
+                let noteName = (idx === 12) ? `C${baseOctave + 1}` : `${notes[idx]}${baseOctave}`;
                 pressKey(noteName);
             }
         });
 
         window.addEventListener('keyup', (e) => {
-            const index = keyChars.indexOf(e.key.toLowerCase());
-            if (index !== -1) {
-                let noteName;
-                if (index === 12) noteName = `C${baseOctave + 1}`;
-                else noteName = `${notes[index]}${baseOctave}`;
+            const idx = keyCodes.indexOf(e.code);
+            if (idx !== -1) {
+                let noteName = (idx === 12) ? `C${baseOctave + 1}` : `${notes[idx]}${baseOctave}`;
                 releaseKey(noteName);
             }
         });
